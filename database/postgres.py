@@ -109,8 +109,8 @@ async def compare_vectors(vectorized_question: list[float]):
     async with AsyncSessionFactory.begin() as session:
         statement = (
             select(Embedding.context)
-            .order_by(Embedding.embedding.max_inner_product(vectorized_question))
-            .limit(3)
+            .order_by(Embedding.embedding.cosine_distance(vectorized_question))
+            .limit(1)
         )
 
         result = await session.scalars(statement)

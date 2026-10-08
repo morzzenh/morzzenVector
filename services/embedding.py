@@ -11,7 +11,7 @@ async def create_vector(chunked_text: list[str]) -> list[dict]:
 
     for chunk in chunked_text:
 
-        vector = await llm.aembed_query(chunk)
+        vector = await llm.aembed_query(f'search_document: {chunk}')
 
         vector_list.append({
             'embedding': vector,
@@ -24,7 +24,7 @@ async def create_vector(chunked_text: list[str]) -> list[dict]:
 
 async def vector_search(question: str) -> list[float]:
 
-    vectorized_question = await llm.aembed_query(question)
+    vectorized_question = await llm.aembed_query(f'search_query: {question}')
 
     return vectorized_question
 
