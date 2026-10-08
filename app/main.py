@@ -1,60 +1,44 @@
+from contextlib import asynccontextmanager
+
 import uvicorn
-from fastapi import FastAPI, UploadFile
-from database.postgres import vector_loading, compare_vectors
-from app_config import *
-from services.text_splitter import chunking_file
-from services.embedding import create_vector, vector_search
-from starlette.concurrency import run_in_threadpool
-from database.postgres import init_db
-app = FastAPI()
+from fastapi import FastAPI
 
-# Разрешенные MIME-форматы загружаемых документов (из mime_tupes.py)
+# ИСПРАВЛЕНО: везде одинаковые абсолютные импорты от корня проекта (app.*) и без `import *`.
+# Раньше здесь было `from app_config import *`, а в services — `from app.app_config`:
+# это работало только из-за настроек PyCharm, а один и тот же модуль загружался под двумя именами.
+# Запуск из КОРНЯ проекта: `uvicorn app.main:app --reload`.
+# БЫЛО: from database.postgres import vector_loading, compare_vectors
+# БЫЛО: from app_config import *
+# БЫЛО: from services.text_splitter import chunking_file
+# БЫЛО: from services.embedding import create_vector, vector_search
+# БЫЛО: from starlette.concurrency import run_in_threadpool
+# БЫЛО: from database.postgres import init_db
+# (эндпоинты и их импорты переехали в app/api/routes.py)
+# БЫЛО: from app.api.routes import router
+# БЫЛО: from app.db.session import init_db
+# СОКРАЩЕНО: импорт через «витрину» пакетов (см. app/api/__init__.py и app/db/__init__.py)
+from app.api import router
+from app.db import init_db
 
-VALID_TYPES_FILES = [DOC, DOCX, DOCM, DOT, DOTX, PDF, TXT, MD, CSV, HTML, JSON, XML]
 
+# УЛУЧШЕНИЕ: @app.on_event('startup') объявлен устаревшим (deprecated) — вместо него lifespan.
 # Создание необходимых таблиц в БД при первом запуске
-
-@app.on_event('startup')
-async def on_startup():
+# БЫЛО: @app.on_event('startup')
+# БЫЛО: async def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     await init_db()
     print('База данных и таблицы успешно инициализированы!')
+    yield
 
-# Загрузка текстового файла и валидация формата
-@app.post('/uploadfile')
-async def upload_file(file: UploadFile):
-    if file.content_type not in VALID_TYPES_FILES:
-        return {'Ошибка': 'Разрешена загрузка только текстовых файлов'}
+# БЫЛО: app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+app.include_router(router)
 
-    # Обработка текстового файла для LLM
-
-    chunked_text = await run_in_threadpool(chunking_file,file.file) # чанкирование всего текста асинхронно
-
-    vector_list = await create_vector(chunked_text) # векторизация всех чанков
-
-    # Загрузка вектора в базу данных
-
-    await vector_loading(file.filename, vector_list)
-
-    # Тестовый вызов из БД
-
-    return {'Статус': 'Файл успешно загружен в базу'}
-
-# Поисковый запрос к Базе Данных
-
-@app.post('/search')
-async def search(question: str):
-
-    # Векторизация поискового запроса
-
-    vectorized_question = await vector_search(question)
-
-    # Сравнение векторов базы данных и поискового запроса
-
-    result = await compare_vectors(vectorized_question)
-
-    return {'Статус': 'Поиск по базе данных выполнен успешно!', 'Результаты': result}
 
 # Запуск сервера uvicorn на localhost:8000
+# Запускать из корня проекта: python -m app.main
 
 if __name__ == '__main__':
-    uvicorn.run('main:app', host='localhost', port=8000, reload=True)
+    # БЫЛО: uvicorn.run('main:app', host='localhost', port=8000, reload=True)
+    uvicorn.run('app.main:app', host='localhost', port=8000, reload=True)
