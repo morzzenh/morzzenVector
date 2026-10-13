@@ -1,2 +1,5 @@
 .venv/
-.env
+src/morzzenvector/.env
+__pycache__/
+.idea/
+*.pyc

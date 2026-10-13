@@ -1,20 +1,43 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from functools import lru_cache
+
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import BigInteger, Text, String, ForeignKey, text, select
-from database.db_config import DATABASE_URL
+from sqlalchemy import BigInteger, Text, String, ForeignKey, text, select, URL
 from pgvector.sqlalchemy import Vector
+from typing import Annotated
+from fastapi import Depends
 
-# Создание асинхронного движка для базы данных
+from morzzenvector import SettingsDep
 
-async_engine = create_async_engine(DATABASE_URL)
+''' Создание асинхронного движка базы данных с кэшированием. С одинаковыми аргументами settings
+ возвращается кэшированное значение. При изменении аргумента, пересоздается
+ и кэшируется уже другое значение '''
 
-# Создание фабрики сессий AsyncSession
+@lru_cache
+def _create_cached_engine(url: str | URL):
+    return create_async_engine(url)
 
-AsyncSessionFactory = async_sessionmaker(
-    bind=async_engine,
-    class_=AsyncSession,
-    expire_on_commit=False # отключение автоматического истечения объектов
-)
+def create_engine(settings: SettingsDep):
+    return _create_cached_engine(settings.database_url)
+
+EngineDep = Annotated[AsyncEngine, Depends(create_engine)]
+
+''' Создание фабрики сессий AsyncSession с кэшированием. С одинаковыми аргументами settings
+ возвращается кэшированное значение. При изменении аргумента, пересобирается
+ и кэшируется уже другое значение '''
+
+@lru_cache
+def _create_cached_async_session_factory(engine):
+    return async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False # отключение автоматического истечения объектов
+    )
+
+def create_async_session_factory(engine: EngineDep):
+    return _create_cached_async_session_factory(engine)
+
+AsyncSessionFactoryDep = Annotated[async_sessionmaker, Depends(create_async_session_factory)]
 
 # Создание общего базового класса SQLAlchemy
 
@@ -81,21 +104,21 @@ class Embedding(Base):
 
 # Создание таблиц, наследуемых от Base
 
-async def init_db():
-    async with async_engine.begin() as conn:
+async def init_db(engine: AsyncEngine):
+    async with engine.begin() as conn:
         await conn.execute(text('CREATE EXTENSION IF NOT EXISTS vector'))
         await conn.run_sync(Base.metadata.create_all)
 
 # Создание сессии, загрузка вектора и текста в базу данных
 
-async def vector_loading(filename: str, vector_list: list[dict]):
-    async with AsyncSessionFactory.begin() as session:
+async def vector_loading(filename: str, vector_list: list[dict], async_session_factory: async_sessionmaker):
+    async with async_session_factory.begin() as session:
         document_item = Document(
             title=filename
         )
 
         for item in vector_list:
-            chunks_item=Embedding(
+            chunks_item = Embedding(
                 embedding=item['embedding'],
                 context=item['context'],
             )
@@ -105,8 +128,8 @@ async def vector_loading(filename: str, vector_list: list[dict]):
 
 # Создание сессии, поисковый запрос к базе данных, сравнение векторов
 
-async def compare_vectors(vectorized_question: list[float]):
-    async with AsyncSessionFactory.begin() as session:
+async def compare_vectors(vectorized_question: list[float], async_session_factory: async_sessionmaker):
+    async with async_session_factory.begin() as session:
         statement = (
             select(Embedding.context)
             .order_by(Embedding.embedding.cosine_distance(vectorized_question))

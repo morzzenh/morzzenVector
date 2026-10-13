@@ -1,11 +1,10 @@
 import uvicorn
 from fastapi import FastAPI, UploadFile
-from database.postgres import vector_loading, compare_vectors
+from morzzenvector.database import init_db, vector_loading, compare_vectors, AsyncSessionFactoryDep, create_engine
+from morzzenvector.services import EmbeddingDep, create_vector_document, create_vector_query, chunking_document
+from morzzenvector import SettingsDep, get_settings
 from app_config import *
-from services.text_splitter import chunking_file
-from services.embedding import create_vector, vector_search
 from starlette.concurrency import run_in_threadpool
-from database.postgres import init_db
 app = FastAPI()
 
 # Разрешенные MIME-форматы загружаемых документов (из mime_tupes.py)
@@ -16,24 +15,35 @@ VALID_TYPES_FILES = [DOC, DOCX, DOCM, DOT, DOTX, PDF, TXT, MD, CSV, HTML, JSON, 
 
 @app.on_event('startup')
 async def on_startup():
-    await init_db()
+
+    settings = get_settings()
+
+    engine = create_engine(settings)
+
+    await init_db(engine)
     print('База данных и таблицы успешно инициализированы!')
 
 # Загрузка текстового файла и валидация формата
 @app.post('/uploadfile')
-async def upload_file(file: UploadFile):
+async def upload_file(
+        file: UploadFile,
+        settings: SettingsDep,
+        client: EmbeddingDep,
+        async_session_factory: AsyncSessionFactoryDep
+):
+
     if file.content_type not in VALID_TYPES_FILES:
         return {'Ошибка': 'Разрешена загрузка только текстовых файлов'}
 
     # Обработка текстового файла для LLM
 
-    chunked_text = await run_in_threadpool(chunking_file,file.file) # чанкирование всего текста асинхронно
+    chunked_text = await run_in_threadpool(chunking_document,file.file, settings) # чанкирование всего текста асинхронно
 
-    vector_list = await create_vector(chunked_text) # векторизация всех чанков
+    vector_list_document = await create_vector_document(chunked_text, client, settings) # векторизация всех чанков
 
     # Загрузка вектора в базу данных
 
-    await vector_loading(file.filename, vector_list)
+    await vector_loading(file.filename, vector_list_document, async_session_factory)
 
     # Тестовый вызов из БД
 
@@ -42,15 +52,20 @@ async def upload_file(file: UploadFile):
 # Поисковый запрос к Базе Данных
 
 @app.post('/search')
-async def search(question: str):
+async def search(
+        query: str,
+        settings: SettingsDep,
+        client: EmbeddingDep,
+        async_session_factory: AsyncSessionFactoryDep
+):
 
     # Векторизация поискового запроса
 
-    vectorized_question = await vector_search(question)
+    vectorized_question = await create_vector_query(query, client, settings)
 
     # Сравнение векторов базы данных и поискового запроса
 
-    result = await compare_vectors(vectorized_question)
+    result = await compare_vectors(vectorized_question, async_session_factory)
 
     return {'Статус': 'Поиск по базе данных выполнен успешно!', 'Результаты': result}
 
