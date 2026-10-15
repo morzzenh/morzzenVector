@@ -2,9 +2,9 @@ from markitdown import MarkItDown # библиотека для форматир
 from langchain_text_splitters import RecursiveCharacterTextSplitter # библиотека для чанкирования
 from shutil import copyfileobj
 
-from morzzenvector import Settings
+from app import settings
 
-def chunking_document(name: str, settings: Settings) -> list[str]:
+def chunking_document(name: str) -> list[str]:
 
     # Создание и сохранение временного файла
 

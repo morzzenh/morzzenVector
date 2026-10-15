@@ -1,9 +1,8 @@
-from fastapi import Depends
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, SecretStr, model_validator
 from sqlalchemy import URL
-from functools import lru_cache
-from typing import Annotated
 
 ''' Класс настроек базы данных '''
 
@@ -86,6 +85,9 @@ class Chunking(BaseSettings):
         default=..., # обязательное поле
         description='Директория для создания и хранения temp загружаемого файла.'
     )
+''' Определение абсолютного пути к .env '''
+
+BASE_PATH = Path(__file__).resolve().parent.parent # получаем путь к этому файлу (resolve()), далее поднимаемся на 2 директории вверх
 
 ''' Базовый класс настроек Pydantic для валидации .env'''
 
@@ -93,7 +95,7 @@ class Settings(DbSettings, Chunking, Embeddings):
 
     # имена полей = имена переменных окружения .env (регистр не важен)
 
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
+    model_config = SettingsConfigDict(env_file=BASE_PATH / '.env', env_file_encoding='utf-8', extra='ignore')
 
     max_file_size_mb: int = Field(
         default=20,
@@ -131,11 +133,4 @@ class Settings(DbSettings, Chunking, Embeddings):
             raise ValueError('chunk_overlap должен быть меньше chunk_size')
         return self
 
-@lru_cache
-def get_settings() -> Settings:
-
-    # Вызов и кэширование настроек при первом обращении к get_settings()
-
-    return Settings()
-
-SettingsDep = Annotated[Settings, Depends(get_settings)] # создание единого Annotated для импорта настроек
+settings = Settings() # Инициализация настроек
