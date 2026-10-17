@@ -81,10 +81,6 @@ class Chunking(BaseSettings):
         description='Перекрытие соседних чанков в символах (должно быть меньше chunk_size). По умолчанию: 200'
     )
 
-    path_temp_file: str = Field(
-        default=..., # обязательное поле
-        description='Директория для создания и хранения temp загружаемого файла.'
-    )
 ''' Определение абсолютного пути к .env '''
 
 BASE_PATH = Path(__file__).resolve().parent.parent # получаем путь к этому файлу (resolve()), далее поднимаемся на 2 директории вверх

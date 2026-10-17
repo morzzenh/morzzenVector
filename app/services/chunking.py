@@ -1,27 +1,43 @@
+import os
+import tempfile
+from pathlib import Path
+
 from markitdown import MarkItDown # библиотека для форматирования документов в .md
 from langchain_text_splitters import RecursiveCharacterTextSplitter # библиотека для чанкирования
-from shutil import copyfileobj
+from shutil import copyfileobj # функция копирования файла как объекта
 
 from app import settings
 
-def chunking_document(name: str) -> list[str]:
+''' Создание форматера входящего файла .docx, .pdf и пр. в формат .md '''
 
-    # Создание и сохранение временного файла
+_md = MarkItDown(enable_plugins=False) # Set to True to enable plugins
 
-    with open(settings.path_temp_file, 'wb') as temp_file:
-        copyfileobj(name, temp_file)
+''' Создание класса разделителя чанков '''
 
-    # Форматирование входящего файла .docx, .pdf и пр. в формат .md
+_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=settings.chunk_size,
+    chunk_overlap=settings.chunk_overlap
+)
 
-    md = MarkItDown(enable_plugins=False) # Set to True to enable plugins
-    formated_file = md.convert(settings.path_temp_file).markdown
+''' Функция чанкирования текста, при котором создается tempfile '''
 
-    # Чанкирование отформатированного файла
+def chunking_document(file, filename: str) -> list[str]:
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=settings.chunk_size,
-                                                   chunk_overlap=settings.chunk_overlap,
-                                                   add_start_index=True)
+    suffix = Path(filename).suffix # отделение расширения файла для передачи в tempfile
 
-    chunk_list = splitter.split_text(formated_file)
+    # Создание и сохранение временного файла класса NamedTemporaryFile (именованный файл)
 
-    return chunk_list
+    with tempfile.NamedTemporaryFile(mode='wb', suffix=suffix, delete=False, dir=Path(__file__).resolve().parent.parent / 'storage') as temp_file:
+
+        copyfileobj(file, temp_file) # функция копирования загружаемого файла name в temp_file
+        name_tempfile = temp_file.name
+
+    try:
+        # Форматирование загружаемого текстового файла в формат .md
+        formated_file = _md.convert(name_tempfile).markdown
+
+    finally:
+        # Удаление tempfile через os
+        os.remove(name_tempfile)
+
+    return _splitter.split_text(formated_file)

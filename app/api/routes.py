@@ -17,7 +17,7 @@ async def upload_file(file: UploadFile):
 
     # Обработка текстового файла для LLM
 
-    chunked_text = await run_in_threadpool(chunking_document,file.file) # чанкирование всего текста асинхронно
+    chunked_text = await run_in_threadpool(chunking_document,file.file, file.filename) # чанкирование всего текста асинхронно
 
     vector_list_document = await create_vector_document(chunked_text) # векторизация всех чанков
 
