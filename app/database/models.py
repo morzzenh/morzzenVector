@@ -25,6 +25,17 @@ class Document(Base):
         nullable=False
     )
 
+    document_hash: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=False
+    )
+
+    embedding_model: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False
+    )
+
     chunks: Mapped[list['Embedding']] = relationship(
         back_populates='document',
         cascade='all, delete-orphan',
@@ -48,6 +59,10 @@ class Embedding(Base):
     document_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey('documents.id', ondelete='CASCADE')
+    )
+
+    chunk_index: Mapped[int] = mapped_column(
+        nullable=False
     )
 
     # Векторное представление
