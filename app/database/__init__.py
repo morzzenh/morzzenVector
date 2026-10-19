@@ -1,4 +1,4 @@
-from app.database.postgres import init_db, close_db, vector_loading, compare_vectors, async_engine
+from app.database.repository import init_db, close_db, vector_loading, compare_vectors, async_engine
 from app.database.models import Base, Document, Embedding
 
 __all__ = [

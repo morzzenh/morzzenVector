@@ -1,8 +1,9 @@
-from fastapi import UploadFile, APIRouter
+from fastapi import UploadFile, APIRouter,HTTPException
 
 from app.database import vector_loading, compare_vectors
 from app.services import create_vector_document, create_vector_query, chunking_document
 from app.constans import VALID_TYPES_FILES
+from app import settings
 
 from starlette.concurrency import run_in_threadpool
 
@@ -13,9 +14,17 @@ router = APIRouter()
 async def upload_file(file: UploadFile):
 
     if file.content_type not in VALID_TYPES_FILES:
-        return {'Ошибка': 'Разрешена загрузка только текстовых файлов'}
+        raise HTTPException(
+            status_code=415,
+            detail=f'Неподдерживаемый тип файла. Допустимые форматы: {VALID_TYPES_FILES}'
+        )
+    if file.size > settings.max_file_size_mb:
+        raise HTTPException(
+            status_code=413,
+            detail=f'Загружаемый файл большого размера. Допустимый размер: {settings.max_file_size_mb} мб'
+        )
 
-    # Обработка текстового файла для LLM
+    # Обработка текстового файла для модели эмбеддинга
 
     chunked_text = await run_in_threadpool(chunking_document,file.file, file.filename) # чанкирование всего текста асинхронно
 
@@ -25,9 +34,7 @@ async def upload_file(file: UploadFile):
 
     await vector_loading(file.filename, vector_list_document)
 
-    # Тестовый вызов из БД
-
-    return {'Статус': 'Файл успешно загружен в базу'}
+    return {'status': 'Файл успешно загружен в базу'}
 
 # Поисковый запрос к Базе Данных
 
@@ -42,4 +49,4 @@ async def search(query: str):
 
     result = await compare_vectors(vectorized_question)
 
-    return {'Статус': 'Поиск по базе данных выполнен успешно!', 'Результаты': result}
+    return {'status': 'Поиск по базе данных выполнен успешно!', 'results': result}
