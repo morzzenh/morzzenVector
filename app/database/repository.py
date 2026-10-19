@@ -13,14 +13,6 @@ async def vector_loading(filename: str, document_hash: str, vector_list_document
     try:
         async with AsyncSessionFactory.begin() as session:
 
-            # Проверка уникальности кэша файла, сравнение с кэшом из бд
-            # Если такой файл есть, возвращается False
-
-            if await session.scalar(
-                select(Document.id).where(Document.document_hash == document_hash)
-            ):
-                return False
-
             # Создание документа в бд, запись его кэша и используемой модели эмбеддинга
 
             document_item = Document(
@@ -63,3 +55,19 @@ async def compare_vectors(vectorized_query: list[float]):
         result = await session.scalars(statement)
 
         return result.all()
+
+# Проверка уникальности загружаемого файла
+
+async def check_unique(document_hash: str) -> bool:
+
+    async with AsyncSessionFactory.begin() as session:
+
+        # Проверка уникальности кэша файла, сравнение с кэшом из бд
+        # Если такой файл есть, возвращается False
+
+        if await session.scalar(
+            select(Document.id).where(Document.document_hash == document_hash)
+        ):
+            return False
+
+    return True

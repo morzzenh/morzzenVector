@@ -1,7 +1,7 @@
 import hashlib
 from fastapi import UploadFile, APIRouter,HTTPException
 
-from app.database import vector_loading, compare_vectors
+from app.database import vector_loading, compare_vectors, check_unique
 from app.services import create_vector_document, create_vector_query, chunking_document
 from app.constans import VALID_TYPES_FILES
 from app import settings
@@ -24,10 +24,15 @@ async def upload_file(file: UploadFile):
             status_code=413,
             detail=f'Загружаемый файл большого размера. Допустимый размер: {settings.max_file_size} мб'
         )
-    # Кэширование файла для последующей проверки на дубликат
+    # Кэширование файла для последующей проверки уникальности
 
     document_hash = hashlib.sha256(await file.read()).hexdigest() # алгоритм кэширования sha256, вид hexdigest (a69f12df83)
     await file.seek(0)
+
+    # Проверка уникальности загружаемого файла
+
+    if not await check_unique(document_hash):
+        raise HTTPException(status_code=409, detail='Такой файл уже был загружен ранее')
 
     # Обработка текстового файла для модели эмбеддинга
 
