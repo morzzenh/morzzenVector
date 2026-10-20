@@ -45,16 +45,32 @@ async def vector_loading(filename: str, document_hash: str, vector_list_document
 # Создание сессии, поисковый запрос к базе данных, сравнение векторов
 
 async def compare_vectors(vectorized_query: list[float]):
+
     async with AsyncSessionFactory.begin() as session:
+
+        # Поиск косинусного расстояния между векторами / запись значения в distance
+
+        distance = Embedding.embedding.cosine_distance(vectorized_query).label('distance')
+
         statement = (
-            select(Embedding.context)
-            .order_by(Embedding.embedding.cosine_distance(vectorized_query))
-            .limit(1)
+            select(
+                Document.title,
+                Embedding.document_id,
+                Embedding.chunk_index,
+                Embedding.context,
+                distance
+            )
+            .join(Document, Document.id == Embedding.document_id)
+            .where(distance <= settings.search_max_distance)
+            .order_by(distance)
+            .limit(3)
         )
 
-        result = await session.scalars(statement)
+        result = await session.execute(statement)
 
-        return result.all()
+        results = result.all()
+
+    return [dict(row._mapping) for row in results]
 
 # Проверка уникальности загружаемого файла
 
