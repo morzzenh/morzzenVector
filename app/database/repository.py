@@ -63,14 +63,35 @@ async def compare_vectors(vectorized_query: list[float]):
             .join(Document, Document.id == Embedding.document_id)
             .where(distance <= settings.search_max_distance)
             .order_by(distance)
-            .limit(3)
+            .limit(settings.top_k * 3)
         )
 
-        result = await session.execute(statement)
+        rows = (await session.execute(statement)).all()
 
-        results = result.all()
+        # Алгоритм пропуска соседних чанков, если они в выдаче идут последовательно
+        # это позволяет убрать в выдаче одинаковую информацию из-за перекрытия чанков
 
-    return [dict(row._mapping) for row in results]
+        results: list[dict] = []
+        for row in rows:
+            is_neighbor = any(
+                r['document_id'] == row.document_id and abs(r['chunk_index'] - row.chunk_index) == 1
+                for r in results
+            )
+            if is_neighbor:
+                continue
+
+            results.append({
+                'document_id': row.document_id,
+                'title': row.title,
+                'chunk_index': row.chunk_index,
+                'distance': round(row.distance, 4),
+                'context': row.context
+            })
+
+            if len(results) == settings.top_k:
+                break
+
+    return results
 
 # Проверка уникальности загружаемого файла
 

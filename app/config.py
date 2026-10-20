@@ -74,6 +74,12 @@ class Embeddings(BaseSettings):
         'реальным запросам. Значение по умолчанию: 0.6'
     )
 
+    top_k: int = Field(
+        default=3,
+        ge=1,
+        description='Количество выдаваемых чанков при поисковом запросе'
+    )
+
 ''' Класс настроек чанкирования текста '''
 
 class Chunking(BaseSettings):
