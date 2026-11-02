@@ -6,7 +6,7 @@ from app.database.models import Base
 
 # Создание асинхронного движка базы данных
 
-async_engine = create_async_engine(settings.database_url)
+async_engine = create_async_engine(settings.database_url, echo=settings.echo)
 
 # Создание асинхронной фабрики сессий
 

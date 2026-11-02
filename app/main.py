@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from app.api import router
-from app.database import init_db, close_db
+from app.database import init_db
 
 # Создание необходимых таблиц в БД при первом запуске
 
@@ -15,10 +15,6 @@ async def lifespan(app: FastAPI):
     print('База данных и таблицы успешно инициализированы!')
 
     yield # приложение запущено и принимает HTTP запросы
-
-    await close_db()
-    print('База данных и таблицы удалены')
-
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(router)

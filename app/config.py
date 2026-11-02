@@ -114,6 +114,11 @@ class Settings(DbSettings, Chunking, Embeddings):
         description='Максимальный размер загружаемого файла в мегабайтах. По умолчанию: 20'
     )
 
+    echo: bool | None = Field(
+        default=False,
+        description='Тестовая настройка отображения SQL запросов в консоли'
+    )
+
     @property
     def database_url(self) -> URL:
 

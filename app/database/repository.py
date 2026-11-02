@@ -44,7 +44,7 @@ async def vector_loading(filename: str, document_hash: str, vector_list_document
 
 # Создание сессии, поисковый запрос к базе данных, сравнение векторов
 
-async def compare_vectors(vectorized_query: list[float]):
+async def compare_vectors(vectorized_query: list[float], top_k: int):
 
     async with AsyncSessionFactory.begin() as session:
 
@@ -63,7 +63,7 @@ async def compare_vectors(vectorized_query: list[float]):
             .join(Document, Document.id == Embedding.document_id)
             .where(distance <= settings.search_max_distance)
             .order_by(distance)
-            .limit(settings.top_k * 3)
+            .limit(top_k * 3)
         )
 
         rows = (await session.execute(statement)).all()
@@ -88,7 +88,7 @@ async def compare_vectors(vectorized_query: list[float]):
                 'context': row.context
             })
 
-            if len(results) == settings.top_k:
+            if len(results) == top_k:
                 break
 
     return results

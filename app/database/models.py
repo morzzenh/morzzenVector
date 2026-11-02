@@ -38,9 +38,7 @@ class Document(Base):
 
     chunks: Mapped[list['Embedding']] = relationship(
         back_populates='document',
-        cascade='all, delete-orphan',
-        lazy='selectin'
-
+        cascade='all, delete-orphan'
     )
 
 # Создание класса векторного отображения чанков документа

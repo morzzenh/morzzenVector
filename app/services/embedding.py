@@ -10,18 +10,12 @@ model = OllamaEmbeddings(model=settings.embedding_model)
 
 async def create_vector_document(chunked_text: list[str]) -> list[dict]:
 
-    vector_list_document: list[dict] = []
+    vectors = await model.aembed_documents([f'{settings.embed_doc_prefix} {chunk}' for chunk in chunked_text])
 
-    for chunk in chunked_text:
-
-        vector = await model.aembed_query(f'{settings.embed_doc_prefix} {chunk}')
-
-        vector_list_document.append({
-            'embedding': vector,
-            'context': chunk
-        })
-
-    return vector_list_document
+    return [
+        {'embedding': vector, 'context': chunk}
+        for vector, chunk in zip(vectors, chunked_text)
+    ]
 
 # Векторизация поискового запроса и создание списка векторов (float)
 
