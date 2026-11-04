@@ -1,5 +1,5 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy import String, BigInteger, ForeignKey, Text
+from sqlalchemy import String, BigInteger, ForeignKey, Text, Index
 from pgvector.sqlalchemy import Vector
 
 from app import settings
@@ -46,6 +46,20 @@ class Document(Base):
 class Embedding(Base):
     __tablename__ = 'embeddings'
 
+    # HNSW-индекс по косинусному расстоянию. Без индекса Postgres сравнивает
+    # со всеми векторами (точно, но медленно на больших объемах). Класс операторов
+    # vector_cosine_ops должен совпадать с метрикой в запросе (cosine_distance)
+
+    __table_args__ = (
+        Index(
+            'hnsw_index',
+            'embedding',
+            postgresql_using=settings.index_type,
+            postgresql_with={'m': settings.max_connections, 'ef_construction': settings.exploration_depth},
+            postgresql_ops={'embedding': 'vector_cosine_ops'},
+        ),
+    )
+
     id: Mapped[int] = mapped_column(
         BigInteger,
         primary_key=True,
@@ -80,3 +94,4 @@ class Embedding(Base):
     document: Mapped['Document'] = relationship(
         back_populates='chunks'
     )
+

@@ -40,6 +40,24 @@ class DbSettings(BaseSettings):
         description='Пароль для подключения к бд.'
     )
 
+    index_type: str = Field(
+        default='hnsw',
+        description='Метод индексирования postgres для улучшения поиска'
+    )
+
+    max_connections: int = Field(
+        default=16,
+        ge=2,
+        le=100,
+        description='Максимальное кол-во двунаправленных связей (для hnsw метода). От 2 до 100'
+    )
+
+    exploration_depth: int = Field(
+        default=64,
+        ge=1,
+        description='Глубина разведки/поиска соседей при построении графа (для hnsw метода). От 1 до бесконечности'
+    )
+
 ''' Класс настроек модели эмбеддинга '''
 
 class Embeddings(BaseSettings):
