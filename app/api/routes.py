@@ -1,99 +1,105 @@
 import hashlib
-from fastapi import UploadFile, APIRouter,HTTPException, File
-from pydantic import WithJsonSchema
 from typing import Annotated
 
-from app.database import vector_loading, compare_vectors, check_unique
-from app.services import create_vector_document, create_vector_query, chunking_document
-from app.constans import VALID_TYPES_FILES
-from app.api.schemas import SearchRequest
-from app import settings
-
+from fastapi import APIRouter, HTTPException, UploadFile
+from pydantic import WithJsonSchema
 from starlette.concurrency import run_in_threadpool
+
+from app import settings
+from app.api.schemas import SearchRequest
+from app.constans import VALID_TYPES_FILES
+from app.database import check_unique, compare_vectors, vector_loading
+from app.services import chunking_document, create_vector_document, create_vector_query
 
 router = APIRouter()
 
 # Временный костыль
-
 SwaggerFileFormat = Annotated[UploadFile, WithJsonSchema({"type": "string", "format": "binary"})]
 
-# Загрузка текстового файла и валидация формата
-@router.post('/uploadfile')
-async def upload_file(files: list[SwaggerFileFormat] = File()):
+
+# Загрузка текстовых файлов и валидация формата
+@router.post("/uploadfile")
+async def upload_file(files: list[SwaggerFileFormat]):
 
     chunks, documents_names, failed_documents = [], [], []
 
     # Перебор всех файлов в цикле
-
     for file in files:
-
         try:
-
             if file.content_type not in VALID_TYPES_FILES:
                 raise HTTPException(
                     status_code=415,
-                    detail=f'Неподдерживаемый тип файла. Допустимые форматы: {VALID_TYPES_FILES}'
+                    detail=f"Неподдерживаемый тип файла. Допустимые форматы: {VALID_TYPES_FILES}",
                 )
             if file.size > settings.max_file_size:
                 raise HTTPException(
                     status_code=413,
-                    detail=f'Загружаемый файл большого размера. Допустимый размер: {settings.max_file_size_mb} мб'
+                    detail=f"Загружаемый файл большого размера. "
+                           f"Допустимый размер: {settings.max_file_size_mb} мб",
                 )
             # Кэширование файла для последующей проверки уникальности
-
-            document_hash = hashlib.sha256(await file.read()).hexdigest() # алгоритм кэширования sha256, вид hexdigest (a69f12df83)
+            document_hash = hashlib.sha256(
+                await file.read()
+            ).hexdigest()  # алгоритм кэширования sha256, вид hexdigest (a69f12df83)
             await file.seek(0)
 
             # Проверка уникальности загружаемого файла
-
             if not await check_unique(document_hash):
-                raise HTTPException(status_code=409, detail='Такой файл уже был загружен ранее')
+                raise HTTPException(status_code=409, detail="Такой файл уже был загружен ранее")
 
             # Обработка текстового файла для модели эмбеддинга
-
-            chunked_text = await run_in_threadpool(chunking_document,file.file, file.filename) # чанкирование всего текста асинхронно
+            chunked_text = await run_in_threadpool(
+                chunking_document, file.file, file.filename
+            )  # чанкирование всего текста асинхронно
 
             # Если документ пустой, выйдет ошибка
-
             if not chunked_text:
-                raise HTTPException(status_code=422, detail='Не удалось извлечь текст из файла')
+                raise HTTPException(status_code=422, detail="Не удалось извлечь текст из файла")
 
-            vector_list_document = await create_vector_document(chunked_text) # векторизация всех чанков
+            vector_list_document = await create_vector_document(
+                chunked_text
+            )  # векторизация всех чанков
 
             # Загрузка вектора в базу данных, проверка на уникальность файла
-
             if not await vector_loading(file.filename, document_hash, vector_list_document):
-                raise HTTPException(status_code=409, detail='Такой файл уже был загружен ранее')
+                raise HTTPException(status_code=409, detail="Такой файл уже был загружен ранее")
 
             chunks.append(len(chunked_text))
 
             documents_names.append(file.filename)
 
-        # Отлавливание ошибок, чтобы нужны файлы загрузились и приложение не упало, но ошибки были показаны
-
+        # Отлавливание ошибок, чтобы нужны файлы загрузились и приложение не упало,
+        # но ошибки были показаны
         except HTTPException as e:
+            failed_documents.append(
+                {"filename": file.filename, "status_code": e.status_code, "detail": e.detail}
+            )
 
-            failed_documents.append({'filename': file.filename, 'status_code': e.status_code, 'detail': e.detail})
-
-    return {
-        'status': f'Документы "{','.join(documents_names)}" успешно загружены в базу',
-        'all chunks': sum(chunks),
-        'all documents': len(documents_names),
-        'errors': 'Ошибка загрузки документов:',
-        'status_errors': failed_documents,
+    result = {
+        "status": f'Документы "{",".join(documents_names)}" успешно загружены в базу',
+        "all chunks": sum(chunks),
+        "all documents": len(documents_names),
     }
 
+    if not failed_documents:
+        return result
+
+    result.update(
+        {
+            "errors": "Ошибка загрузки документов:",
+            "status_errors": failed_documents,
+        }
+    )
+    return result
+
+
 # Поисковый запрос к Базе Данных
-
-@router.post('/search')
+@router.post("/search")
 async def search(request: SearchRequest):
-
     # Векторизация поискового запроса
-
     vectorized_question = await create_vector_query(request.query)
 
     # Сравнение векторов базы данных и поискового запроса
-
     result = await compare_vectors(vectorized_question, request.top_k)
 
-    return {'status': 'Поиск по базе данных выполнен успешно!', 'results': result}
+    return {"status": "Поиск по базе данных выполнен успешно!", "results": result}

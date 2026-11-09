@@ -1,170 +1,180 @@
 from pathlib import Path
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, SecretStr, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
-''' Класс настроек базы данных '''
+""" Класс настроек базы данных """
+
 
 class DbSettings(BaseSettings):
-
     database_user: str = Field(
-        default='postgres',
-        description='Имя пользователя базы данных. По умолчанию: postgres'
+        default="postgres", description="Имя пользователя базы данных. По умолчанию: postgres"
     )
 
     database_host: str = Field(
-        default='localhost',
-        description='IP адрес хоста базы данных. По умолчанию: localhost'
+        default="localhost", description="IP адрес хоста базы данных. По умолчанию: localhost"
     )
 
     database_port: int = Field(
-        default=5432,
-        ge=1,
-        le=65535,
-        description='Порт для подключения к бд. По умолчанию: 5432'
+        default=5432, ge=1, le=65535, description="Порт для подключения к бд. По умолчанию: 5432"
     )
 
     database_name: str = Field(
-        default='postgres',
-        description='Название базы данных. По умолчанию: postgres'
+        default="postgres", description="Название базы данных. По умолчанию: postgres"
     )
 
     driver_name: str = Field(
-        default='postgresql+asyncpg',
-        description='Движок базы данных. Требуется асинхронный. По умолчанию: postgresql+asyncpg'
+        default="postgresql+asyncpg",
+        description="Движок базы данных. Требуется асинхронный. По умолчанию: postgresql+asyncpg",
     )
 
     database_password: SecretStr = Field(
-        default=..., # обязательное поле
-        description='Пароль для подключения к бд.'
+        default=...,  # обязательное поле
+        description="Пароль для подключения к бд.",
     )
 
     index_type: str = Field(
-        default='hnsw',
-        description='Метод индексирования postgres для улучшения поиска'
+        default="hnsw", description="Метод индексирования postgres для улучшения поиска"
     )
 
     max_connections: int = Field(
         default=16,
         ge=2,
         le=100,
-        description='Максимальное кол-во двунаправленных связей (для hnsw метода). От 2 до 100'
+        description="Максимальное кол-во двунаправленных связей (для hnsw метода). От 2 до 100",
     )
 
     exploration_depth: int = Field(
         default=64,
         ge=1,
-        description='Глубина разведки/поиска соседей при построении графа (для hnsw метода). От 1 до бесконечности'
+        description="Глубина разведки/поиска соседей при построении графа (для hnsw метода). "
+                    "От 1 до бесконечности",
     )
 
-''' Класс настроек модели эмбеддинга '''
+
+""" Класс настроек модели эмбеддинга """
+
 
 class Embeddings(BaseSettings):
+    ollama_host: str = Field(
+        default=...,
+        description="Адрес подключения к Ollama. "
+                    "В зависимости от того запускается в Docker или локально",
+    )
 
     embedding_model: str = Field(
-        default=..., # обязательное поле
-        description='Название модели эмбеддинга. От неё зависит качество всего поиска.'
+        default=...,  # обязательное поле
+        description="Название модели эмбеддинга. От неё зависит качество всего поиска.",
     )
 
     embed_dim: int = Field(
         default=768,
         gt=0,
-        description='Размерность вектора. Должна соответствовать используемой модели. По умолчанию: 768'
+        description="Размерность вектора. Должна соответствовать используемой модели. "
+                    "По умолчанию: 768",
     )
 
     embed_doc_prefix: str = Field(
-        default='', # дефолт пустая строка
-        description='Префикс документа требуемый для модели nomic-embed-text. Пример: "search_document:"'
+        default="",  # дефолт пустая строка
+        description='Префикс документа требуемый для модели nomic-embed-text. '
+                    'Пример: "search_document:"',
     )
 
     embed_query_prefix: str = Field(
-        default='', # дефолт пустая строка
-        description='Префикс поискового запроса требуемый для модели nomic-embed-text. Пример: "search_query:"'
+        default="",  # дефолт пустая строка
+        description='Префикс поискового запроса требуемый для модели nomic-embed-text. '
+                    'Пример: "search_query:"',
     )
 
     search_max_distance: float = Field(
         default=0.6,
         ge=0,
         le=2,
-        description='Порог косинусного расстояния: 0 — идентично, 1 — не связано, 2 — противоположно. '
-        'Результаты дальше порога считаются нерелевантными. Зависит от модели — подберите по '
-        'реальным запросам. Значение по умолчанию: 0.6'
+        description="Порог косинусного расстояния: "
+                    "0 — идентично, 1 — не связано, 2 — противоположно. "
+                    "Результаты дальше порога считаются нерелевантными. "
+                    "Зависит от модели — подберите по реальным запросам. "
+                    "Значение по умолчанию: 0.6",
     )
 
     top_k: int = Field(
-        default=3,
-        ge=1,
-        description='Количество выдаваемых чанков при поисковом запросе'
+        default=3, ge=1, description="Количество выдаваемых чанков при поисковом запросе"
     )
 
-''' Класс настроек чанкирования текста '''
+
+""" Класс настроек чанкирования текста """
+
 
 class Chunking(BaseSettings):
-
     chunk_size: int = Field(
         default=1000,
         gt=0,
-        description='Максимальный размер одного чанка в символах. По умолчанию: 1000'
+        description="Максимальный размер одного чанка в символах. По умолчанию: 1000",
     )
 
     chunk_overlap: int = Field(
         default=200,
         ge=0,
-        description='Перекрытие соседних чанков в символах (должно быть меньше chunk_size). По умолчанию: 200'
+        description="Перекрытие соседних чанков в символах (должно быть меньше chunk_size). "
+                    "По умолчанию: 200",
     )
 
-''' Определение абсолютного пути к .env '''
 
-BASE_PATH = Path(__file__).resolve().parent.parent # получаем путь к этому файлу (resolve()), далее поднимаемся на 2 директории вверх
+""" Определение абсолютного пути к .env """
+BASE_PATH = (
+    Path(__file__).resolve().parent.parent
+)  # получаем путь к этому файлу (resolve()), далее поднимаемся на 2 директории вверх
 
-''' Базовый класс настроек Pydantic для валидации .env'''
+""" Базовый класс настроек Pydantic для валидации .env"""
+
 
 class Settings(DbSettings, Chunking, Embeddings):
-
     # имена полей = имена переменных окружения .env (регистр не важен)
-
-    model_config = SettingsConfigDict(env_file=BASE_PATH / '.env', env_file_encoding='utf-8', extra='ignore')
+    model_config = SettingsConfigDict(
+        env_file=BASE_PATH / ".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     max_file_size_mb: int = Field(
         default=20,
         gt=0,
-        description='Максимальный размер загружаемого файла в мегабайтах. По умолчанию: 20'
+        description="Максимальный размер загружаемого файла в мегабайтах. По умолчанию: 20",
     )
 
     echo: bool | None = Field(
-        default=False,
-        description='Тестовая настройка отображения SQL запросов в консоли'
+        default=False, description="Тестовая настройка отображения SQL запросов в консоли"
+    )
+
+    app_port: int = Field(
+        default=8000,
+        ge=1,
+        le=65535,
+        description="Порт самого приложения для запуска через Docker. По умолчанию: 8000",
     )
 
     @property
     def database_url(self) -> URL:
-
         # Сборка URL для подключения к базе данных
-
         return URL.create(
             drivername=self.driver_name,
             username=self.database_user,
             password=self.database_password.get_secret_value(),
             host=self.database_host,
             port=self.database_port,
-            database=self.database_name
+            database=self.database_name,
         )
 
     @property
     def max_file_size(self) -> int:
+        return self.max_file_size_mb * 1024 * 1024  # лимит размера файла в байта
 
-        # Лимит размера файла в байтах
-
-        return self.max_file_size_mb * 1024 * 1024
-
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def _check_chunk_overlap(self):
-
-        # Проверка согласованности нескольких полей: перекрытие чанков не может быть больше самого чанка
-
+        # Проверка согласованности нескольких полей:
+        # перекрытие чанков не может быть больше самого чанка
         if self.chunk_overlap >= self.chunk_size:
-            raise ValueError('chunk_overlap должен быть меньше chunk_size')
+            raise ValueError("chunk_overlap должен быть меньше chunk_size")
         return self
 
-settings = Settings() # Инициализация настроек
+
+settings = Settings()  # Инициализация настроек

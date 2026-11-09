@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  database:
+    image: pgvector/pgvector:0.8.6-pg18-trixie
+    container_name: postgres_pgvector
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "${DATABASE_PORT}:${DATABASE_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_embedding
+    restart: always
+    ports:
+      - "${EMBEDDING_PORT}:${EMBEDDING_PORT}"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ollama-model-loader:
+    image: ollama/ollama:latest
+    container_name: ai_ollama_loader
+    environment:
+      - OLLAMA_HOST
+    command: pull ${EMBEDDING_MODEL:-bge-m3}
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  app:
+    build: .
+    container_name: fastapi_app
+    restart: on-failure
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      ollama-model-loader:
+        condition: service_completed_successfully

@@ -1,5 +1,5 @@
 from app.config import settings
 
-__version__ = '0.1.0'
+__version__ = "0.1.0"
 
-__all__ = ['settings', '__version__']
+__all__ = ["settings", "__version__"]
