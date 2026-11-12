@@ -1,7 +1,7 @@
 import hashlib
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import WithJsonSchema
 from starlette.concurrency import run_in_threadpool
 
@@ -19,7 +19,7 @@ SwaggerFileFormat = Annotated[UploadFile, WithJsonSchema({"type": "string", "for
 
 # Загрузка текстовых файлов и валидация формата
 @router.post("/uploadfile")
-async def upload_file(files: list[SwaggerFileFormat]):
+async def upload_file(files: list[SwaggerFileFormat] = File()):
 
     chunks, documents_names, failed_documents = [], [], []
 
@@ -100,6 +100,6 @@ async def search(request: SearchRequest):
     vectorized_question = await create_vector_query(request.query)
 
     # Сравнение векторов базы данных и поискового запроса
-    result = await compare_vectors(vectorized_question, request.top_k)
+    result = await compare_vectors(request.query, vectorized_question, request.top_k)
 
     return {"status": "Поиск по базе данных выполнен успешно!", "results": result}

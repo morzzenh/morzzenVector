@@ -1,5 +1,6 @@
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, ForeignKey, Index, String, Text
+from sqlalchemy import BigInteger, ForeignKey, Index, String, Text, Computed
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app import settings
@@ -30,10 +31,10 @@ class Document(Base):
 class Embedding(Base):
     __tablename__ = "embeddings"
 
-    # HNSW-индекс по косинусному расстоянию. Без индекса Postgres сравнивает
-    # со всеми векторами (точно, но медленно на больших объемах). Класс операторов
-    # vector_cosine_ops должен совпадать с метрикой в запросе (cosine_distance)
     __table_args__ = (
+        # HNSW-индекс по косинусному расстоянию. Без индекса Postgres сравнивает
+        # со всеми векторами (точно, но медленно на больших объемах). Класс операторов
+        # vector_cosine_ops должен совпадать с метрикой в запросе (cosine_distance)
         Index(
             "hnsw_index",
             "embedding",
@@ -44,6 +45,12 @@ class Embedding(Base):
             },
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        # GIN-индекс для быстрого полнотекстового поиска
+        Index(
+            "search_vector_index",
+            "search_vector",
+            postgresql_using="gin"
+        )
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -67,6 +74,12 @@ class Embedding(Base):
 
     # Текстовое представление
     context: Mapped[str] = mapped_column(Text)
+
+    # Представление текста типа TSVECTOR для полнотекстового поиска
+    search_vector: Mapped[str] = mapped_column(
+        TSVECTOR,
+        Computed("to_tsvector('russian', context)", persisted=True)
+    )
 
     # Связь назад к документу
     document: Mapped[Document] = relationship(back_populates="chunks")

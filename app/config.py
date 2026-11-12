@@ -52,6 +52,12 @@ class DbSettings(BaseSettings):
                     "От 1 до бесконечности",
     )
 
+    k: int = Field(
+        default=60,
+        ge=1,
+        description="Константа для RRF. По умолчанию: 60"
+    )
+
 
 """ Класс настроек модели эмбеддинга """
 
