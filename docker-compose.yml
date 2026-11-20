@@ -9,20 +9,32 @@ services:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
+    command: ["postgres", "-c", "log_statement=all"]
     ports:
-      - "${DATABASE_PORT}:${DATABASE_PORT}"
+      - "${DATABASE_PORT}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  migrations:
+    build:
+      context: .
+      target: migrations
+    container_name: alembic_migrations
+    env_file:
+      - .env
+    depends_on:
+      database:
+        condition: service_healthy
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama_embedding
     restart: always
     ports:
-      - "${EMBEDDING_PORT}:${EMBEDDING_PORT}"
+      - "${EMBEDDING_PORT}:11434"
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 5s
@@ -39,8 +51,10 @@ services:
       ollama:
         condition: service_healthy
 
-  app:
-    build: .
+  api:
+    build:
+      context: .
+      target: api
     container_name: fastapi_app
     restart: on-failure
     ports:
@@ -50,6 +64,8 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
       ollama:
         condition: service_healthy
       ollama-model-loader:

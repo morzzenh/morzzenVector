@@ -9,15 +9,9 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "asyncpg==0.31.0",
-    "fastapi==0.141.1",
-    "langchain-ollama==1.1.0",
-    "langchain-text-splitters==1.1.2",
-    "markitdown[docx,pdf]==0.1.8",
     "pgvector==0.5.0",
     "pydantic-settings==2.15.0",
-    "python-multipart==0.0.32",
     "sqlalchemy[asyncio]==2.1.1",
-    "uvicorn==0.52.0",
 ]
 
 [project.scripts]
@@ -30,6 +24,19 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "ruff>=0.17.4",
+]
+
+migrations = [
+    "alembic>=1.20.1",
+]
+
+api = [
+    "fastapi==0.141.1",
+    "langchain-ollama==1.1.0",
+    "langchain-text-splitters==1.1.2",
+    "markitdown[docx,pdf]==0.1.8",
+    "python-multipart==0.0.32",
+    "uvicorn==0.52.0",
 ]
 
 [tool.uv]

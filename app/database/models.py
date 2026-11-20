@@ -1,15 +1,22 @@
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, ForeignKey, Index, String, Text, Computed
+from sqlalchemy import BigInteger, ForeignKey, Index, String, Text, Computed, MetaData
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app import settings
+from app.config import settings
 
+# Создание шаблона явных наименований для Alembic
+NAMING_CONVENTION = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_`%(constraint_name)s`",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
 
 # Создание общего базового класса SQLAlchemy
 class Base(DeclarativeBase):
-    pass
-
+    metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 # Создание класса загружаемого документа
 class Document(Base):
