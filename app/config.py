@@ -49,14 +49,10 @@ class DbSettings(BaseSettings):
         default=64,
         ge=1,
         description="Глубина разведки/поиска соседей при построении графа (для hnsw метода). "
-                    "От 1 до бесконечности",
+        "От 1 до бесконечности",
     )
 
-    k: int = Field(
-        default=60,
-        ge=1,
-        description="Константа для RRF. По умолчанию: 60"
-    )
+    k: int = Field(default=60, ge=1, description="Константа для RRF. По умолчанию: 60")
 
 
 """ Класс настроек модели эмбеддинга """
@@ -66,7 +62,7 @@ class Embeddings(BaseSettings):
     ollama_host: str = Field(
         default=...,
         description="Адрес подключения к Ollama. "
-                    "В зависимости от того запускается в Docker или локально",
+        "В зависимости от того запускается в Docker или локально",
     )
 
     embedding_model: str = Field(
@@ -78,19 +74,19 @@ class Embeddings(BaseSettings):
         default=768,
         gt=0,
         description="Размерность вектора. Должна соответствовать используемой модели. "
-                    "По умолчанию: 768",
+        "По умолчанию: 768",
     )
 
     embed_doc_prefix: str = Field(
         default="",  # дефолт пустая строка
-        description='Префикс документа требуемый для модели nomic-embed-text. '
-                    'Пример: "search_document:"',
+        description="Префикс документа требуемый для модели nomic-embed-text. "
+        'Пример: "search_document:"',
     )
 
     embed_query_prefix: str = Field(
         default="",  # дефолт пустая строка
-        description='Префикс поискового запроса требуемый для модели nomic-embed-text. '
-                    'Пример: "search_query:"',
+        description="Префикс поискового запроса требуемый для модели nomic-embed-text. "
+        'Пример: "search_query:"',
     )
 
     search_max_distance: float = Field(
@@ -98,10 +94,10 @@ class Embeddings(BaseSettings):
         ge=0,
         le=2,
         description="Порог косинусного расстояния: "
-                    "0 — идентично, 1 — не связано, 2 — противоположно. "
-                    "Результаты дальше порога считаются нерелевантными. "
-                    "Зависит от модели — подберите по реальным запросам. "
-                    "Значение по умолчанию: 0.6",
+        "0 — идентично, 1 — не связано, 2 — противоположно. "
+        "Результаты дальше порога считаются нерелевантными. "
+        "Зависит от модели — подберите по реальным запросам. "
+        "Значение по умолчанию: 0.6",
     )
 
     top_k: int = Field(
@@ -123,7 +119,7 @@ class Chunking(BaseSettings):
         default=200,
         ge=0,
         description="Перекрытие соседних чанков в символах (должно быть меньше chunk_size). "
-                    "По умолчанию: 200",
+        "По умолчанию: 200",
     )
 
 

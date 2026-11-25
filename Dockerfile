@@ -27,8 +27,8 @@ FROM base AS migrations
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --python-preference system --no-dev --group migrations
 
-COPY ./app/database/models.py ./app/database/
-COPY ./app/config.py ./app/
+COPY app/database/models.py ./app/database/
+COPY app/config.py ./app/
 COPY ./migrations/ ./migrations/
 COPY alembic.ini ./
 

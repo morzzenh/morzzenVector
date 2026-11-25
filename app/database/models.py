@@ -1,5 +1,5 @@
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, ForeignKey, Index, String, Text, Computed, MetaData
+from sqlalchemy import BigInteger, Computed, ForeignKey, Index, MetaData, String, Text
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -11,12 +11,14 @@ NAMING_CONVENTION = {
     "uq": "uq_%(table_name)s_%(column_0_name)s",
     "ck": "ck_%(table_name)s_`%(constraint_name)s`",
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s"
+    "pk": "pk_%(table_name)s",
 }
+
 
 # Создание общего базового класса SQLAlchemy
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
 
 # Создание класса загружаемого документа
 class Document(Base):
@@ -53,11 +55,7 @@ class Embedding(Base):
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
         # GIN-индекс для быстрого полнотекстового поиска
-        Index(
-            "search_vector_index",
-            "search_vector",
-            postgresql_using="gin"
-        )
+        Index("search_vector_index", "search_vector", postgresql_using="gin"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -84,8 +82,7 @@ class Embedding(Base):
 
     # Представление текста типа TSVECTOR для полнотекстового поиска
     search_vector: Mapped[str] = mapped_column(
-        TSVECTOR,
-        Computed("to_tsvector('russian', context)", persisted=True)
+        TSVECTOR, Computed("to_tsvector('russian', context)", persisted=True)
     )
 
     # Связь назад к документу

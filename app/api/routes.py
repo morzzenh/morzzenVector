@@ -1,7 +1,7 @@
 import hashlib
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import WithJsonSchema
 from starlette.concurrency import run_in_threadpool
 
@@ -35,7 +35,7 @@ async def upload_file(files: list[SwaggerFileFormat] = File()):
                 raise HTTPException(
                     status_code=413,
                     detail=f"Загружаемый файл большого размера. "
-                           f"Допустимый размер: {settings.max_file_size_mb} мб",
+                    f"Допустимый размер: {settings.max_file_size_mb} мб",
                 )
             # Кэширование файла для последующей проверки уникальности
             document_hash = hashlib.sha256(

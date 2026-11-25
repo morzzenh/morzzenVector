@@ -1,21 +1,17 @@
 import asyncio
-
 from logging.config import fileConfig
 
-from sqlalchemy.ext.asyncio import async_engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.database.models import Base
 from app.config import settings
+from app.database.models import Base
 
 config = context.config
 
 # Форматирование URL строки под синтаксис Alembic для корректного парсинга из env
-stringified_sqlalchemy_url = settings.database_url.render_as_string(
-    hide_password=False
-)
+stringified_sqlalchemy_url = settings.database_url.render_as_string(hide_password=False)
 
 # Экранирование символа %
 percent_replaced_url = stringified_sqlalchemy_url.replace("%", "%%")
@@ -29,8 +25,9 @@ if config.config_file_name is not None:
 # Указываем какую metadata использовать
 target_metadata = Base.metadata
 
+
 def run_migrations_offline() -> None:
-    """ Запуск миграций в offline-режиме """
+    """Запуск миграций в offline-режиме"""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -42,14 +39,16 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
+
 def do_run_migrations(connection):
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
         context.run_migrations()
 
+
 async def run_async_migrations() -> None:
-    """ Запуск миграций асинхронно в online-режиме """
+    """Запуск миграций асинхронно в online-режиме"""
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -61,8 +60,10 @@ async def run_async_migrations() -> None:
 
     await connectable.dispose()
 
+
 def run_migrations_online():
     asyncio.run(run_async_migrations())
+
 
 if context.is_offline_mode():
     run_migrations_offline()

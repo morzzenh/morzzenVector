@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from app import settings
@@ -60,7 +60,7 @@ async def compare_vectors(string_query: str, vectorized_query: list[float], top_
                 Embedding.document_id,
                 Embedding.chunk_index,
                 Embedding.context,
-                rank_col
+                rank_col,
             )
             .join(Document, Document.id == Embedding.document_id)
             # Условие соответствия запросу (оператор @@)
@@ -87,7 +87,7 @@ async def compare_vectors(string_query: str, vectorized_query: list[float], top_
             .limit(top_k * 3)
         )
 
-        rows_vectors = (await session.execute(statement_vectors)).all() # получение данных из бд
+        rows_vectors = (await session.execute(statement_vectors)).all()  # получение данных из бд
         rows_words = (await session.execute(statement_words)).all()
 
         # 3. Объединение и сортировка
@@ -101,8 +101,8 @@ async def compare_vectors(string_query: str, vectorized_query: list[float], top_
                     "title": row.title,
                     "chunk_index": row.chunk_index,
                     "context": row.context,
-                    "distance": round(row.distance, 4), # сохраняем расстояние (для вектора)
-                    "rrf_score": 0.0, # счетчик очков
+                    "distance": round(row.distance, 4),  # сохраняем расстояние (для вектора)
+                    "rrf_score": 0.0,  # счетчик очков
                 }
             # Даем очки: чем меньше rank (чем выше место), тем больше очков
             # Формула: 1 / (K + rank)
@@ -116,16 +116,14 @@ async def compare_vectors(string_query: str, vectorized_query: list[float], top_
                     "title": row.title,
                     "chunk_index": row.chunk_index,
                     "context": row.context,
-                    "distance": None, # значение None, т.к. чанка найден только текстом
+                    "distance": None,  # значение None, т.к. чанка найден только текстом
                     "rrf_score": 0.0,
                 }
             fused_candidates[key]["rrf_score"] += 1.0 / (settings.k + rank)
 
         # Сортировка по очкам от большего к меньшему
         sorted_candidates = sorted(
-            fused_candidates.values(),
-            key=lambda x: x["rrf_score"],
-            reverse=True
+            fused_candidates.values(), key=lambda x: x["rrf_score"], reverse=True
         )
 
         # 4. Алгоритм пропуска соседних чанков, если они в выдаче идут последовательно
@@ -151,7 +149,7 @@ async def compare_vectors(string_query: str, vectorized_query: list[float], top_
             )
 
             if len(results) == top_k:
-                break # останавливаемся, если набрали достаточно результатов
+                break  # останавливаемся, если набрали достаточно результатов
 
     return results
 
